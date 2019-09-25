@@ -7,22 +7,27 @@
 
 #include "stdafx.h"
 #include "Directx.h"
+#include "DirectX11.h"
+#include <string>
 
-#if _UNICODE
-typedef WCHAR KCHAR;
-#else
-typedef char KCHAR;
-#endif
-typedef const KCHAR CKCHAR;
-typedef KCHAR* LPKCHAR;
-typedef const LPKCHAR  LPCKCHAR;
-
-
-LPCKCHAR WINDOW_CLASS_NAME = _T("DirectX Boooooom!");
+LPCWSTR WINDOW_CLASS_NAME = L"DirectX Boooooom!";
 HWND g_WndHandle = NULL;
 HINSTANCE g_hInstance;
 const int DEFAULT_WIDTH = 640;
 const int DEFAULT_HEIGHT = 480;
+
+// DX...
+Microsoft::WRL::ComPtr<ID3D11Device>		g_pd3dDevice		= nullptr;
+Microsoft::WRL::ComPtr<ID3D11DeviceContext> g_pd3dDeviceContext = nullptr;
+//
+
+//funcs
+void Update();
+void Render();
+void Init();
+LRESULT _stdcall WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+INT_PTR _stdcall SysDlgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+//....
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -42,6 +47,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	wndClass.cbClsExtra = 0;
 	wndClass.cbWndExtra = 0;
 	wndClass.hInstance = hInstance;
+	wndClass.lpszMenuName = MAKEINTRESOURCE(IDC_DIRECTX);
 	wndClass.lpszClassName = WINDOW_CLASS_NAME;
 
 	if (!RegisterClass(&wndClass))
@@ -80,6 +86,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		return HRESULT_FROM_WIN32(dwError);
 	}
 
+	ShowWindow(g_WndHandle, nCmdShow);
+
 	bool bGotMsg;
 	MSG msg;
 	msg.message = WM_NULL;
@@ -101,6 +109,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			Render();
 		}
 	}
+
+	return 0;
 }
 
 LRESULT _stdcall WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -116,6 +126,19 @@ LRESULT _stdcall WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			);
 			return 0;
 		}
+		case WM_COMMAND:
+		{
+			switch (LOWORD(wParam))
+			{
+				case ID_INFO_SYSTEM:
+				{
+					DialogBox(g_hInstance, MAKEINTRESOURCE(IDD_SYSTEM),NULL, SysDlgProc);
+				}
+			default:
+				break;
+			}
+			return 0;
+		}
 		case WM_DESTROY:
 		{
 			PostQuitMessage(0);
@@ -128,7 +151,34 @@ LRESULT _stdcall WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(hWnd,uMsg,wParam,lParam);
 }
 
+INT_PTR _stdcall SysDlgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	switch (uMsg)
+	{
+		case WM_INITDIALOG:
+		{
+			std::wstring s = std::to_wstring(g_pd3dDevice->GetFeatureLevel());
+			SetDlgItemText(hWnd,IDC_FEATURE_LEVEL, s.c_str());
+			break;
+		}
+		case WM_CLOSE:
+		{
+			EndDialog(hWnd,	NULL);
+			break;
+		}
+	default:
+		return 0;
+	}
+	return 0;
+}
+
 // Main Logics
+
+void Init()
+{
+	InitDX(&g_pd3dDevice, &g_pd3dDeviceContext);
+
+}
 
 void Update()
 {
